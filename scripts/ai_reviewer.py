@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import time
+import requests  
 from google import genai
 
 MODELO_GEMINI = "gemini-2.5-flash"
@@ -19,7 +20,6 @@ def obter_git_diff():
         resultado = subprocess.run(comando, capture_output=True, text=True, check=True)
         return resultado.stdout
     except subprocess.CalledProcessError as e:
-       
         print(f"Erro ao executar git diff: {e.stderr}", file=sys.stderr)
         return None
 
@@ -39,6 +39,44 @@ def realizar_review(client, prompt):
             else:
                 print(f"Erro crítico na API: {e}", file=sys.stderr)
                 sys.exit(1)
+
+def postar_comentario_no_pr(relatorio):
+    """Posta o relatório gerado como um comentário no Pull Request."""
+    github_token = os.getenv("GITHUB_TOKEN")
+    repo = os.getenv("GITHUB_REPOSITORY")
+    event_path = os.getenv("GITHUB_EVENT_PATH")
+    
+    if not github_token or not repo or not event_path:
+        print("Ambiente fora de um Pull Request ativo. Pulando postagem de comentário.")
+        return
+
+    import json
+    with open(event_path, 'r') as f:
+        event_data = json.load(f)
+    
+
+    pr_number = event_data.get("pull_request", {}).get("number")
+    if not pr_number:
+        print("Número do PR não encontrado. O comentário não será postado.")
+        return
+
+    print(f"Postando comentário no PR #{pr_number}...")
+    url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
+    
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    body = {
+        "body": f"### 🤖 Gemini Code Review\n\n{relatorio}"
+    }
+    
+    response = requests.post(url, headers=headers, json=body)
+    if response.status_code == 201:
+        print("Comentário postado com sucesso no Pull Request!")
+    else:
+        print(f"Falha ao postar comentário: {response.status_code} - {response.text}", file=sys.stderr)
 
 def main():
     api_key = os.getenv("GEMINI_API_KEY")
@@ -73,6 +111,8 @@ Seja extremamente direto, pragmático e vá direto ao ponto. Use markdown para f
     print("=== RELATÓRIO DE CODE REVIEW (GEMINI) ===")
     print(relatorio)
     print("=========================================")
+
+    postar_comentario_no_pr(relatorio)
 
 if __name__ == "__main__":
     main()
