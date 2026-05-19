@@ -1,6 +1,7 @@
+import json
 import os
-import sys
 import subprocess
+import sys
 import time
 import requests
 from google import genai
@@ -18,9 +19,7 @@ def obter_git_diff():
         else:
             comando = ["git", "diff", "HEAD~1", "HEAD", "--", "*.py"]
 
-        resultado = subprocess.run(
-            comando, capture_output=True, text=True, check=True
-        )
+        resultado = subprocess.run(comando, capture_output=True, text=True, check=True)
         return resultado.stdout
     except subprocess.CalledProcessError as e:
         print(f"Erro ao executar git diff: {e.stderr}", file=sys.stderr)
@@ -53,15 +52,15 @@ def postar_comentario_no_pr(relatorio):
     event_path = os.getenv("GITHUB_EVENT_PATH")
 
     if not github_token or not repo or not event_path:
-        print(
-            "Ambiente fora de um Pull Request ativo. Pulando postagem de comentário."
-        )
+        print("Ambiente fora de um Pull Request ativo. Pulando postagem de comentário.")
         return
 
-    import json
-
-    with open(event_path, "r") as f:
-        event_data = json.load(f)
+    try:
+        with open(event_path, "r", encoding="utf-8") as f:
+            event_data = json.load(f)
+    except Exception as e:
+        print(f"Erro ao ler arquivo de evento do GitHub: {e}", file=sys.stderr)
+        return
 
     pr_number = event_data.get("pull_request", {}).get("number")
     if not pr_number:
@@ -76,16 +75,16 @@ def postar_comentario_no_pr(relatorio):
         "Accept": "application/vnd.github.v3+json",
     }
 
-    body = {"body": f"### Gemini Code Review\n\n{relatorio}"}
+    body = {"body": f"### 🤖 Gemini Code Review\n\n{relatorio}"}
 
-    response = requests.post(url, headers=headers, json=body)
-    if response.status_code == 201:
-        print("Comentário postado com sucesso no Pull Request!")
-    else:
-        print(
-            f"Falha ao postar comentário: {response.status_code} - {response.text}",
-            file=sys.stderr,
-        )
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=15)
+        if response.status_code == 201:
+            print("Comentário postado com sucesso no Pull Request!")
+        else:
+            print(f"Falha ao postar comentário: {response.status_code} - {response.text}", file=sys.stderr)
+    except requests.exceptions.RequestException as e:
+        print(f"Erro de rede ao postar comentário no GitHub: {e}", file=sys.stderr)
 
 
 def main():
