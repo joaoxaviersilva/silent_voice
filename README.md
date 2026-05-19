@@ -1,3 +1,1 @@
-# Silent Voice
-
-![Status da Pipeline](https://github.com/joaoxaviersilva/silent_voice/actions/workflows/pipeline.yml/badge.svg)
+[![Pipeline CI](https://github.com/joaoxaviersilva/silent_voice/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoxaviersilva/silent_voice/actions/workflows/ci.yml)
