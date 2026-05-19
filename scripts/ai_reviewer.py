@@ -69,7 +69,7 @@ def postar_comentario_no_pr(relatorio):
     }
     
     body = {
-        "body": f"### 🤖 Gemini Code Review\n\n{relatorio}"
+        "body": f"### Gemini Code Review\n\n{relatorio}"
     }
     
     response = requests.post(url, headers=headers, json=body)

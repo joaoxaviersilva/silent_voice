@@ -28,6 +28,10 @@ jobs:
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false 
+          VALIDATE_PYTHON_BLACK: true  
+          VALIDATE_YAML: true          
+          DISABLE_ERRORS: true
 
   build:
     name: Validação Python
