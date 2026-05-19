@@ -1,0 +1,13 @@
+opencv-python
+mediapipe
+numpy
+sounddevice
+scipy
+openai-whisper
+pyttsx3
+open-clip-torch
+torch
+torchvision
+groq
+scikit-learn
+python-dotenv
