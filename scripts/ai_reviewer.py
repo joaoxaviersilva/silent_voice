@@ -1,21 +1,16 @@
 import os
 import sys
 import subprocess
+import time
 from google import genai
 
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    print("Erro: GEMINI_API_KEY não encontrada.")
-    sys.exit(1)
-
-client = genai.Client(api_key=api_key)
+MODELO_GEMINI = "gemini-2.5-flash"
+MAX_TENTATIVAS = 3
 
 def obter_git_diff():
     """Captura o diff do commit atual ou do Pull Request."""
     try:
-       
         base_ref = os.getenv("GITHUB_BASE_REF")
-        
         if base_ref:
             comando = ["git", "diff", f"origin/{base_ref}...HEAD", "--", "*.py"]
         else:
@@ -24,16 +19,41 @@ def obter_git_diff():
         resultado = subprocess.run(comando, capture_output=True, text=True, check=True)
         return resultado.stdout
     except subprocess.CalledProcessError as e:
-        print(f"Erro ao executar git diff: {e.stderr}")
+       
+        print(f"Erro ao executar git diff: {e.stderr}", file=sys.stderr)
         return None
 
-diff_conteudo = obter_git_diff()
+def realizar_review(client, prompt):
+    """Envia o prompt para a API do Gemini com sistema de retry."""
+    for tentativa in range(MAX_TENTATIVAS):
+        try:
+            response = client.models.generate_content(
+                model=MODELO_GEMINI,
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            if "503" in str(e) and tentativa < MAX_TENTATIVAS - 1:
+                print(f"Servidor instável (503). Tentando novamente em 5 segundos... (Tentativa {tentativa + 2}/{MAX_TENTATIVAS})")
+                time.sleep(5)
+            else:
+                print(f"Erro crítico na API: {e}", file=sys.stderr)
+                sys.exit(1)
 
-if not diff_conteudo or not diff_conteudo.strip():
-    print("Nenhuma alteração em arquivos Python encontrada no git diff.")
-    sys.exit(0)
+def main():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("Erro: GEMINI_API_KEY não encontrada.", file=sys.stderr)
+        sys.exit(1)
 
-prompt = f"""Você é um engenheiro DevOps e revisor de código sênior especialista em Python.
+    client = genai.Client(api_key=api_key)
+    diff_conteudo = obter_git_diff()
+
+    if not diff_conteudo or not diff_conteudo.strip():
+        print("Nenhuma alteração em arquivos Python encontrada no git diff.")
+        sys.exit(0)
+
+    prompt = f"""Você é um engenheiro DevOps e revisor de código sênior especialista em Python.
 Analise o `git diff` abaixo das alterações feitas no repositório. Sua resposta deve ser estritamente focada nos seguintes pontos:
 
 1. **O que mudou:** Explique brevemente o resumo das alterações.
@@ -47,16 +67,12 @@ Seja extremamente direto, pragmático e vá direto ao ponto. Use markdown para f
 {diff_conteudo}
 ```"""
 
-print("Enviando git diff para análise da IA...\n")
-
-try:
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+    print("Enviando git diff para análise da IA...\n")
+    relatorio = realizar_review(client, prompt)
+    
     print("=== RELATÓRIO DE CODE REVIEW (GEMINI) ===")
-    print(response.text)
+    print(relatorio)
     print("=========================================")
-except Exception as e:
-    print(f"Erro ao gerar conteúdo com a API: {e}")
-    sys.exit(1)
+
+if __name__ == "__main__":
+    main()
