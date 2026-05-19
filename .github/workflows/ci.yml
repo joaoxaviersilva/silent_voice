@@ -3,7 +3,6 @@ name: Pipeline CI
 on:
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
@@ -53,3 +52,30 @@ jobs:
       - name: Validar estrutura
         run: |
           echo "Estrutura validada com sucesso"
+
+  ai_review:
+    name: Code Review Inteligente (Git Diff)
+    runs-on: ubuntu-latest
+    needs: build 
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências da API
+        run: |
+          pip install google-genai
+
+      - name: Executar Revisão de Código
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          python scripts/ai_reviewer.py
