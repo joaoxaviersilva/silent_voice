@@ -30,8 +30,11 @@ def realizar_review(client, prompt):
     """Envia o prompt para a API do Gemini com sistema de retry."""
     for tentativa in range(MAX_TENTATIVAS):
         try:
+            # config={"temperature": 0.0} garante consistência e tira a "criatividade" da IA
             response = client.models.generate_content(
-                model=MODELO_GEMINI, contents=prompt
+                model=MODELO_GEMINI,
+                contents=prompt,
+                config={"temperature": 0.0}
             )
             return response.text
         except Exception as e:
@@ -100,15 +103,20 @@ def main():
         print("Nenhuma alteração em arquivos Python encontrada no git diff.")
         sys.exit(0)
 
-    prompt = f"""Você é um engenheiro DevOps e revisor de código sênior especialista em Python.
-Analise o `git diff` abaixo das alterações feitas no repositório. Sua resposta deve ser estritamente focada nos seguintes pontos:
+    prompt = f"""Você é um engenheiro DevOps sênior e revisor especialista em Python. 
+Analise detalhadamente o `git diff` fornecido e preencha ESTRITAMENTE o modelo abaixo. Explique de forma profunda, técnica e detalhada cada ponto encontrado. Se um dos tópicos não tiver observações, escreva "Nada a declarar".
 
-1. **O que mudou:** Explique brevemente o resumo das alterações.
-2. **Erros e Bugs:** Identifique possíveis quebras de lógica, exceções não tratadas ou bugs sintáticos.
-3. **Segurança:** Procure por vulnerabilidades (chaves expostas, injeções, falhas de pacotes).
-4. **Clean Code & Otimização:** Sugira melhorias de legibilidade, padrões Pythonicos e performance.
+### Análise Detalhada das Alterações
+(Não resuma. Explique detalhadamente o que cada modificação faz no fluxo do código, citando os arquivos afetados)
 
-Seja extremamente direto, pragmático e vá direto ao ponto. Use markdown para formatar.
+### Erros, Bugs e Exceções
+(Aponte falhas de lógica, riscos de crash, caminhos onde o código pode quebrar e faltas de tratamento de erros, detalhando o impacto de cada um)
+
+### Segurança e Vulnerabilidades
+(Analise profundamente se há riscos de vazamento, injeção ou má gestão de dados sensíveis)
+
+### Clean Code & Padrões Pythonicos
+(Sugira refatorações detalhadas, ganho de performance e melhorias de legibilidade baseadas no PEP 8)
 
 ```diff
 {diff_conteudo}
