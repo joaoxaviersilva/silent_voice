@@ -14,7 +14,6 @@ on:
 permissions: {}
 
 jobs:
-
  lint:
     name: Rodando Black e Flake8
     runs-on: ubuntu-latest
