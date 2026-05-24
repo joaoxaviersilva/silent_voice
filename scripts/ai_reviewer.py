@@ -30,17 +30,20 @@ def realizar_review(client, prompt):
     """Envia o prompt para a API do Gemini com sistema de retry."""
     for tentativa in range(MAX_TENTATIVAS):
         try:
-            # config={"temperature": 0.0} garante consistência e tira a "criatividade" da IA
+            # config={"temperature": 0.0}
+            # garante consistência e tira a "criatividade" da IA
             response = client.models.generate_content(
-                model=MODELO_GEMINI,
-                contents=prompt,
-                config={"temperature": 0.0}
+                model=MODELO_GEMINI, contents=prompt, config={"temperature": 0.0}
             )
             return response.text
         except Exception as e:
             if "503" in str(e) and tentativa < MAX_TENTATIVAS - 1:
                 print(
-                    f"Servidor instável (503). Tentando novamente em 5 segundos... (Tentativa {tentativa + 2}/{MAX_TENTATIVAS})"
+                    (
+                        f"Servidor instável (503)."
+                        f"Tentando novamente em 5 segundos..."
+                        f"(Tentativa {tentativa + 2}/{MAX_TENTATIVAS})"
+                    )
                 )
                 time.sleep(5)
             else:
@@ -85,7 +88,10 @@ def postar_comentario_no_pr(relatorio):
         if response.status_code == 201:
             print("Comentário postado com sucesso no Pull Request!")
         else:
-            print(f"Falha ao postar comentário: {response.status_code} - {response.text}", file=sys.stderr)
+            print(
+                f"Falha ao postar comentário: {response.status_code} - {response.text}",
+                file=sys.stderr,
+            )
     except requests.exceptions.RequestException as e:
         print(f"Erro de rede ao postar comentário no GitHub: {e}", file=sys.stderr)
 
@@ -103,20 +109,30 @@ def main():
         print("Nenhuma alteração em arquivos Python encontrada no git diff.")
         sys.exit(0)
 
-    prompt = f"""Você é um engenheiro DevOps sênior e revisor especialista em Python. 
-Analise detalhadamente o `git diff` fornecido e preencha ESTRITAMENTE o modelo abaixo. Explique de forma profunda, técnica e detalhada cada ponto encontrado. Se um dos tópicos não tiver observações, escreva "Nada a declarar".
+    prompt = f"""Você é um engenheiro DevOps sênior e revisor especialista em Python.
+Analise detalhadamente o `git diff`
+fornecido e preencha ESTRITAMENTE o modelo abaixo.
+Explique de forma profunda, técnica e detalhada cada ponto encontrado.
+Se um dos tópicos não tiver observações, escreva "Nada a declarar".
 
 ### Análise Detalhada das Alterações
-(Não resuma. Explique detalhadamente o que cada modificação faz no fluxo do código, citando os arquivos afetados)
+(Não resuma.
+Explique detalhadamente o que cada modificação faz no fluxo do código,
+citando os arquivos afetados)
 
 ### Erros, Bugs e Exceções
-(Aponte falhas de lógica, riscos de crash, caminhos onde o código pode quebrar e faltas de tratamento de erros, detalhando o impacto de cada um)
+(Aponte falhas de lógica, riscos de crash,
+caminhos onde o código pode quebrar e faltas de tratamento de erros,
+detalhando o impacto de cada um)
 
 ### Segurança e Vulnerabilidades
-(Analise profundamente se há riscos de vazamento, injeção ou má gestão de dados sensíveis)
+(Analise profundamente se há riscos de vazamento,
+injeção ou má gestão de dados sensíveis)
 
 ### Clean Code & Padrões Pythonicos
-(Sugira refatorações detalhadas, ganho de performance e melhorias de legibilidade baseadas no PEP 8)
+(Sugira refatorações detalhadas,
+ganho de performance
+e melhorias de legibilidade baseadas no PEP 8)
 
 ```diff
 {diff_conteudo}

@@ -11,3 +11,7 @@ torchvision
 groq
 scikit-learn
 python-dotenv
+black
+flake8
+google-genai
+requests
