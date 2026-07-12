@@ -1,29 +1,84 @@
 import numpy as np
 
 
-def normalize(p):
-    c = np.mean(p, axis=0)
-    p = p - c
-    s = np.max(np.linalg.norm(p, axis=1)) + 1e-6
-    return p / s
+def normalize(landmarks):
+    """
+    Centraliza e normaliza os landmarks da boca.
+    """
+
+    center = np.mean(landmarks, axis=0)
+    landmarks = landmarks - center
+
+    scale = np.max(np.linalg.norm(landmarks, axis=1))
+
+    if scale < 1e-6:
+        scale = 1.0
+
+    return landmarks / scale
 
 
-def extract_sequence(seq):
-    feats = []
-    prev = None
+def extract_sequence(sequence):
+    """
+    Extrai features geométricas e temporais da sequência
+    de landmarks da boca.
 
-    for p in seq:
-        p = normalize(p)
+    Cada frame gera um vetor com:
+        - altura da boca
+        - largura da boca
+        - MAR (Mouth Aspect Ratio)
+        - velocidade da altura
+        - velocidade da largura
+        - velocidade do MAR
+    """
 
-        v = np.linalg.norm(p[0] - p[10])
-        h = np.linalg.norm(p[5] - p[15]) + 1e-6
+    features = []
 
-        mar = v / h
-        g = np.array([mar, v, h])
+    previous = None
 
-        vel = g - prev if prev is not None else np.zeros_like(g)
+    for landmarks in sequence:
 
-        feats.append(np.concatenate([g, vel]))
-        prev = g
+        landmarks = normalize(landmarks)
 
-    return np.array(feats)
+        # Cantos da boca
+        left = landmarks[0]
+        right = landmarks[10]
+
+        # Centro do lábio superior
+        upper = landmarks[3]
+
+        # Centro do lábio inferior
+        lower = landmarks[17]
+
+        # Distâncias principais
+        mouth_width = np.linalg.norm(left - right)
+        mouth_height = np.linalg.norm(upper - lower)
+
+        # Mouth Aspect Ratio
+        mar = mouth_height / (mouth_width + 1e-6)
+
+        current = np.array(
+            [
+                mouth_height,
+                mouth_width,
+                mar,
+            ],
+            dtype=np.float32,
+        )
+
+        if previous is None:
+            velocity = np.zeros_like(current)
+        else:
+            velocity = current - previous
+
+        feature = np.concatenate(
+            [
+                current,
+                velocity,
+            ]
+        )
+
+        features.append(feature)
+
+        previous = current
+
+    return np.array(features, dtype=np.float32)
