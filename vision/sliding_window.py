@@ -53,7 +53,4 @@ class SlidingWindow:
         if sequence_length < self.window_size:
             return 0
 
-        return (
-            (sequence_length - self.window_size)
-            // self.step
-        ) + 1
+        return ((sequence_length - self.window_size) // self.step) + 1
